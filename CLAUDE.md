@@ -170,3 +170,30 @@ Si detectás que una decisión de arquitectura mía es mala: decímelo con funda
 Nunca entregues código con // TODO: implementar en la ruta crítica de una fase. Si no llegás, decilo y lo movemos de fase.
 Al cerrar cada fase: commit con mensaje descriptivo y resumen de 5 líneas de qué quedó funcionando.
 No generes documentación extensa hasta la FASE 6. Priorizá código que corra.
+FASE 0 — Fundaciones
+
+Scaffolding Next.js 15 + TS strict + Tailwind v4 + shadcn/ui. Cliente Supabase (browser + server + service role). Migración SQL completa del schema con RLS y funciones de numeración. Seed con: 1 empresa demo (Responsable Inscripto, CUIT válido), 3 usuarios con roles distintos, 2 depósitos, 2 puntos de venta, 25 productos con categorías, 15 clientes (mix de condiciones IVA), 5 proveedores, 2 listas de precios. Aceptación: npm run build limpio · migración aplica sin errores · un usuario de empresa A no puede leer NADA de empresa B (test SQL que lo demuestre) · seed corre idempotente.
+
+FASE 1 — Auth, layout y catálogos
+
+Login/registro/recuperación. Middleware de sesión. Selector de empresa. Sidebar + topbar + ⌘K. CRUD completo de clientes, proveedores, productos, categorías, depósitos, puntos de venta y listas de precios, con tablas filtrables y formularios validados con Zod. Aceptación: los 7 CRUD funcionan end-to-end · validación de CUIT operativa · permisos por rol aplicados en UI y en RLS · búsqueda global encuentra clientes y productos.
+
+FASE 2 — Ventas y facturación (el corazón)
+
+Módulo de comprobantes: presupuesto, pedido, factura, remito, NC/ND. Pantalla de emisión con búsqueda de productos, cálculo de totales en vivo, descuentos por ítem y globales. Motor de cálculo en /lib/domain/ con tests. Conversión presupuesto→pedido→factura preservando trazabilidad. Adaptador de facturación con MockProvider. Generación de PDF. Anulación vía nota de crédito. Listado de comprobantes con filtros. Aceptación: emitir A, B y C con letra y discriminación de IVA correctas · totales cuadran al centavo contra cálculo manual en 5 casos de prueba · numeración correlativa sin huecos bajo 20 emisiones concurrentes · fallo del mock deja el comprobante en borrador SIN consumir número · NC revierte correctamente.
+
+FASE 3 — Stock y compras
+
+Movimientos de stock generados automáticamente por factura/remito. Ajustes manuales con motivo obligatorio. Transferencias entre depósitos. Consulta de saldo por producto/depósito. Kardex (historial de movimientos con saldo corrido). Alertas de stock mínimo. Órdenes de compra → factura de proveedor → ingreso de stock con actualización de costo. Aceptación: saldo calculado desde movimientos coincide siempre con el kardex · venta sin stock se bloquea cuando corresponde · transferencia genera dos movimientos espejo · anular factura devuelve el stock.
+
+FASE 4 — Tesorería y cuentas corrientes
+
+Apertura/cierre de caja con arqueo. Registro de cobros y pagos con múltiples medios. Aplicación de cobros a comprobantes específicos. Cartera de cheques con estados. Cuenta corriente de clientes y proveedores con saldo y antigüedad de deuda (0-30, 31-60, 61-90, +90). Aceptación: cierre de caja calcula la diferencia correctamente · cobro parcial deja el comprobante en estado PARCIAL · saldo de cuenta corriente coincide con la suma de movimientos · límite de crédito bloquea la venta y solo admin puede saltearlo.
+
+FASE 5 — Dashboard y reportes
+
+Dashboard: ventas del mes vs. mes anterior, top 10 productos, top 10 clientes, saldo de cajas, deuda por cobrar, alertas de stock. Reportes: ventas por período/vendedor/producto/categoría, IVA ventas, IVA compras, stock valorizado, cuenta corriente por cliente. Export a CSV y Excel en todos. Aceptación: los números del dashboard coinciden con los reportes detallados · todo reporte exporta correctamente · consultas responden en menos de 1s con 5.000 comprobantes de prueba.
+
+FASE 6 — Hardening y entrega
+
+Audit log poblado por triggers en tablas críticas. Suite de tests de RLS (aislamiento entre empresas). Tests unitarios del motor de cálculo (mínimo 30 casos). Webhooks a n8n con cola de reintentos. Rate limiting en Server Actions. Manejo de errores global. README con instrucciones de deploy. Variables de entorno documentadas. Deploy a Vercel. Aceptación: suite de tests en verde · audit log registra alta/modificación/anulación de comprobantes · deploy productivo funcionando · README permite que un tercero levante el proyecto desde cero.
