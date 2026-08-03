@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+
+/* ===================================================================
+   GestiónPyme — sistema visual
+   Software de trabajo diario: densidad alta, neutros zinc y un acento
+   sobrio. Nada de gradientes ni glassmorphism.
+   =================================================================== */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+}
+
+:root {
+  --radius: 0.375rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.006 285.9);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.006 285.9);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.006 285.9);
+
+  /* Acento único: azul profundo, legible sobre claro y sobre oscuro. */
+  --primary: oklch(0.48 0.13 256);
+  --primary-foreground: oklch(0.98 0.002 285.9);
+
+  --secondary: oklch(0.967 0.001 286.4);
+  --secondary-foreground: oklch(0.21 0.006 285.9);
+  --muted: oklch(0.967 0.001 286.4);
+  --muted-foreground: oklch(0.552 0.014 285.9);
+  --accent: oklch(0.967 0.001 286.4);
+  --accent-foreground: oklch(0.21 0.006 285.9);
+
+  --destructive: oklch(0.577 0.245 27.3);
+  --destructive-foreground: oklch(0.98 0.002 285.9);
+  --success: oklch(0.53 0.13 152);
+  --warning: oklch(0.68 0.15 70);
+
+  --border: oklch(0.92 0.004 286.3);
+  --input: oklch(0.92 0.004 286.3);
+  --ring: oklch(0.48 0.13 256);
+}
+
+.dark {
+  --background: oklch(0.16 0.004 285.9);
+  --foreground: oklch(0.96 0.001 286.4);
+  --card: oklch(0.2 0.005 285.9);
+  --card-foreground: oklch(0.96 0.001 286.4);
+  --popover: oklch(0.2 0.005 285.9);
+  --popover-foreground: oklch(0.96 0.001 286.4);
+
+  --primary: oklch(0.68 0.13 256);
+  --primary-foreground: oklch(0.16 0.004 285.9);
+
+  --secondary: oklch(0.27 0.006 286);
+  --secondary-foreground: oklch(0.96 0.001 286.4);
+  --muted: oklch(0.27 0.006 286);
+  --muted-foreground: oklch(0.71 0.013 286);
+  --accent: oklch(0.27 0.006 286);
+  --accent-foreground: oklch(0.96 0.001 286.4);
+
+  --destructive: oklch(0.64 0.21 25.3);
+  --destructive-foreground: oklch(0.98 0.002 285.9);
+  --success: oklch(0.68 0.14 152);
+  --warning: oklch(0.75 0.15 70);
+
+  --border: oklch(0.28 0.006 286);
+  --input: oklch(0.28 0.006 286);
+  --ring: oklch(0.68 0.13 256);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    /* 14px: densidad de ERP, no de landing. */
+    font-size: 0.875rem;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Los importes y las cantidades siempre alinean por columna. */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    text-align: right;
+  }
+
+  /* Códigos, CUIT y CAE: ancho fijo para leerlos de un vistazo. */
+  .cod {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
