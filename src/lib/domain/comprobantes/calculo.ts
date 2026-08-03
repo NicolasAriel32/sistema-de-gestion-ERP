@@ -231,6 +231,41 @@ export function calcularTotales(
 }
 
 /**
+ * Convierte un precio unitario de un modo de IVA a otro.
+ *
+ * Hace falta al convertir un presupuesto en factura: el presupuesto se
+ * carga con el precio final que va a pagar el cliente, y una factura A lo
+ * necesita neto. Sin esta conversión, convertir un presupuesto de $1.210
+ * en factura A daría un total de $1.464,10.
+ *
+ * El resultado se redondea a 2 decimales, así que el total de la factura
+ * puede diferir del presupuesto en centavos. Es esperable: un presupuesto
+ * no obliga al centavo.
+ */
+export function reexpresarPrecio(
+  precio: number | string,
+  alicuotaIva: number | string,
+  modoOrigen: ModoIva,
+  modoDestino: ModoIva,
+): number {
+  const p = aDecimal(precio, 'precioUnitario');
+  const alicuota = normalizarAlicuota(alicuotaIva);
+
+  // SIN_DISCRIMINAR e INCLUIDO manejan el mismo número: el precio final.
+  const esFinal = (modo: ModoIva) => modo !== 'DISCRIMINADO';
+
+  if (esFinal(modoOrigen) === esFinal(modoDestino)) {
+    return r2(p).toNumber();
+  }
+
+  const factor = CIEN.plus(alicuota).dividedBy(CIEN);
+
+  return esFinal(modoOrigen)
+    ? r2(p.dividedBy(factor)).toNumber() // final → neto
+    : r2(p.times(factor)).toNumber(); // neto → final
+}
+
+/**
  * Reconstruye el total desde los componentes de cabecera. Se usa en los
  * tests y en la validación previa a la emisión: si esto no coincide con
  * `total`, hay un error de cálculo y el comprobante no sale.

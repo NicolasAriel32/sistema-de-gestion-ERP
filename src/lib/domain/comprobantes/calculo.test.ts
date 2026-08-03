@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   calcularTotales,
+  reexpresarPrecio,
   totalDesdeComponentes,
   totalesCoherentes,
   type ItemCalculoInput,
@@ -303,6 +304,48 @@ describe('invariantes', () => {
     expect(t.total).toBe(0);
     expect(t.netoGravado).toBe(0);
     expect(totalesCoherentes(t)).toBe(true);
+  });
+});
+
+describe('reexpresarPrecio · conversión presupuesto → factura', () => {
+  it('de precio final a neto le saca el IVA', () => {
+    expect(reexpresarPrecio(1210, 21, 'INCLUIDO', 'DISCRIMINADO')).toBe(1000);
+    expect(reexpresarPrecio(1105, 10.5, 'INCLUIDO', 'DISCRIMINADO')).toBe(1000);
+  });
+
+  it('de neto a precio final le agrega el IVA', () => {
+    expect(reexpresarPrecio(1000, 21, 'DISCRIMINADO', 'INCLUIDO')).toBe(1210);
+    expect(reexpresarPrecio(1000, 27, 'DISCRIMINADO', 'INCLUIDO')).toBe(1270);
+  });
+
+  it('no toca el precio si los dos modos manejan el precio final', () => {
+    expect(reexpresarPrecio(1210, 21, 'INCLUIDO', 'SIN_DISCRIMINAR')).toBe(1210);
+    expect(reexpresarPrecio(1210, 21, 'SIN_DISCRIMINAR', 'INCLUIDO')).toBe(1210);
+    expect(reexpresarPrecio(1210, 21, 'INCLUIDO', 'INCLUIDO')).toBe(1210);
+  });
+
+  it('no toca el precio si el destino también es neto', () => {
+    expect(reexpresarPrecio(1000, 21, 'DISCRIMINADO', 'DISCRIMINADO')).toBe(1000);
+  });
+
+  it('con alícuota 0% el precio es el mismo en los dos modos', () => {
+    expect(reexpresarPrecio(999.99, 0, 'INCLUIDO', 'DISCRIMINADO')).toBe(999.99);
+    expect(reexpresarPrecio(999.99, 0, 'DISCRIMINADO', 'INCLUIDO')).toBe(999.99);
+  });
+
+  it('convertir un presupuesto en factura A conserva el total salvo centavos', () => {
+    const presupuesto = calcularTotales([item({ cantidad: 2, precioUnitario: 1210 })], B);
+    const neto = reexpresarPrecio(1210, 21, 'INCLUIDO', 'DISCRIMINADO');
+    const factura = calcularTotales([item({ cantidad: 2, precioUnitario: neto })], A);
+
+    expect(presupuesto.total).toBe(2420);
+    expect(factura.total).toBe(2420);
+  });
+
+  it('la ida y vuelta puede perder un centavo, y eso es esperable', () => {
+    const ida = reexpresarPrecio(100.05, 21, 'INCLUIDO', 'DISCRIMINADO');
+    const vuelta = reexpresarPrecio(ida, 21, 'DISCRIMINADO', 'INCLUIDO');
+    expect(Math.abs(vuelta - 100.05)).toBeCloseTo(0, 1);
   });
 });
 

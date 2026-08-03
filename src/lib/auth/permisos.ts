@@ -18,7 +18,8 @@ export type RecursoCatalogo =
   | 'precios'
   | 'depositos'
   | 'puntos_venta'
-  | 'medios_pago';
+  | 'medios_pago'
+  | 'comprobantes';
 
 const ESCRITURA: Record<RecursoCatalogo, readonly Rol[]> = {
   clientes: ['ADMIN', 'VENDEDOR'],
@@ -30,7 +31,13 @@ const ESCRITURA: Record<RecursoCatalogo, readonly Rol[]> = {
   depositos: ['ADMIN'],
   puntos_venta: ['ADMIN'],
   medios_pago: ['ADMIN'],
+  comprobantes: ['ADMIN', 'VENDEDOR'],
 };
+
+/** Saltear el bloqueo por límite de crédito. Espejo de aplicar_cta_cte_comprobante. */
+export function puedeForzarLimiteCredito(rol: Rol): boolean {
+  return rol === 'ADMIN';
+}
 
 /** ¿El rol puede crear/editar/dar de baja este recurso? */
 export function puedeEscribir(rol: Rol, recurso: RecursoCatalogo): boolean {
