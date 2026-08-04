@@ -47,6 +47,11 @@ type DataTableProps<T> = {
   searchPlaceholder?: string;
   csvFilename?: string;
   enableSelection?: boolean;
+  /**
+   * El filtro activos/inactivos sólo tiene sentido en los catálogos. Un
+   * comprobante no se da de baja: se anula, y eso ya es un estado propio.
+   */
+  enableEstadoFiltro?: boolean;
   toolbar?: ReactNode;
 };
 
@@ -71,6 +76,7 @@ export function DataTable<T>({
   searchPlaceholder = 'Buscar…',
   csvFilename = 'export',
   enableSelection = false,
+  enableEstadoFiltro = true,
   toolbar,
 }: DataTableProps<T>) {
   const router = useRouter();
@@ -195,19 +201,21 @@ export function DataTable<T>({
           placeholder={searchPlaceholder}
           className="h-8 w-full max-w-xs"
         />
-        <Select
-          value={estado}
-          onValueChange={(v) => setParam({ estado: v === 'todos' ? null : v })}
-        >
-          <SelectTrigger className="h-8 w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="activos">Activos</SelectItem>
-            <SelectItem value="inactivos">Inactivos</SelectItem>
-          </SelectContent>
-        </Select>
+        {enableEstadoFiltro ? (
+          <Select
+            value={estado}
+            onValueChange={(v) => setParam({ estado: v === 'todos' ? null : v })}
+          >
+            <SelectTrigger className="h-8 w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="activos">Activos</SelectItem>
+              <SelectItem value="inactivos">Inactivos</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : null}
 
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportarCsv} disabled={data.length === 0}>

@@ -1,10 +1,21 @@
 /**
- * Tipos del schema `public`: catálogos y tenencia (Fase 1) más
- * comprobantes, stock y cuentas corrientes (Fase 2).
+ * Tipos del schema `public`: catálogos y tenencia (Fase 1), comprobantes
+ * y cuentas corrientes (Fase 2), stock y compras (Fase 3).
  *
  * Escrito a mano a partir de las migraciones (no generado). Las fases
- * siguientes amplían este archivo con tesorería y compras. Mantener en
- * sincronía con las migraciones de `supabase/migrations/`.
+ * siguientes amplían este archivo con tesorería. Mantener en sincronía
+ * con las migraciones de `supabase/migrations/`.
+ *
+ * Convención: `Update: never` marca las tablas append-only, donde el
+ * trigger de Postgres rechaza cualquier UPDATE.
+ *
+ * Las tablas de compras y órdenes de compra sí declaran Insert y Update,
+ * pero NO deben escribirse con `.insert()`: su alta pasa por
+ * `registrar_compra` y `crear_orden_compra_borrador`, que son las que
+ * mueven stock, actualizan el costo, imputan contra la orden y tocan la
+ * cuenta corriente. Un insert directo dejaría todos esos efectos sin
+ * hacer y la base quedaría formalmente consistente pero contablemente
+ * mal.
  */
 
 export type CondicionIva =
@@ -57,6 +68,36 @@ export type TipoMovimientoStock =
   | 'TRANSFERENCIA_ENTRADA';
 
 export type EntidadTipo = 'CLIENTE' | 'PROVEEDOR';
+
+// --- Fase 3 -----------------------------------------------------------
+
+export type EstadoOrdenCompra =
+  | 'BORRADOR'
+  | 'EMITIDA'
+  | 'RECIBIDA_PARCIAL'
+  | 'RECIBIDA'
+  | 'ANULADA';
+
+export type EstadoCompra = 'BORRADOR' | 'REGISTRADA' | 'PARCIAL' | 'PAGADA' | 'ANULADA';
+
+export type TipoPercepcion = 'IVA' | 'GANANCIAS' | 'IIBB' | 'OTRO';
+
+/** Fila que devuelve `kardex_producto`. */
+export type RenglonKardexDb = {
+  movimiento_id: string;
+  fecha: string;
+  tipo: TipoMovimientoStock;
+  deposito_id: string;
+  deposito_nombre: string;
+  cantidad: number;
+  entrada: number;
+  salida: number;
+  saldo: number;
+  costo_unitario: number;
+  comprobante_id: string | null;
+  comprobante: string | null;
+  motivo: string | null;
+};
 
 /** Tipo compuesto que devuelven las RPC de emisión. */
 export type ResultadoEmision = {
@@ -538,15 +579,165 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+
+      // --- Fase 3: compras ---------------------------------------------
+
+      ordenes_compra: {
+        Row: {
+          id: string;
+          empresa_id: string;
+          numero: number;
+          proveedor_id: string;
+          deposito_id: string | null;
+          fecha: string;
+          fecha_entrega: string | null;
+          estado: EstadoOrdenCompra;
+          moneda: string;
+          cotizacion: number;
+          neto: number;
+          iva: number;
+          total: number;
+          observaciones: string | null;
+          creado_por: string | null;
+          creado_en: Timestamp;
+        };
+        /**
+         * El alta real va por `crear_orden_compra_borrador`, que asigna el
+         * número con lock de fila. Escribir por `.insert()` se saltearía
+         * el contador.
+         */
+        Insert: Omit<
+          Database['public']['Tables']['ordenes_compra']['Row'],
+          'id' | 'creado_en'
+        >;
+        Update: Partial<Database['public']['Tables']['ordenes_compra']['Insert']>;
+        Relationships: [];
+      };
+
+      orden_compra_items: {
+        Row: {
+          id: string;
+          empresa_id: string;
+          orden_compra_id: string;
+          orden: number;
+          producto_id: string | null;
+          descripcion: string;
+          cantidad: number;
+          cantidad_recibida: number;
+          precio_unitario: number;
+          alicuota_iva: number;
+          subtotal_neto: number;
+          subtotal_iva: number;
+          subtotal: number;
+        };
+        Insert: Omit<Database['public']['Tables']['orden_compra_items']['Row'], 'id'>;
+        Update: Partial<Database['public']['Tables']['orden_compra_items']['Insert']>;
+        Relationships: [];
+      };
+
+      compras: {
+        Row: {
+          id: string;
+          empresa_id: string;
+          proveedor_id: string;
+          orden_compra_id: string | null;
+          tipo_comprobante: TipoComprobante;
+          letra: LetraComprobante;
+          punto_venta_numero: number;
+          numero: number;
+          cae_proveedor: string | null;
+          fecha_emision: string;
+          fecha_vencimiento: string | null;
+          fecha_registracion: string;
+          deposito_id: string | null;
+          condicion_venta: CondicionVenta;
+          moneda: string;
+          cotizacion: number;
+          neto_gravado: number;
+          neto_no_gravado: number;
+          exento: number;
+          iva_105: number;
+          iva_21: number;
+          iva_27: number;
+          total_percepciones: number;
+          total: number;
+          /** Columna generada: sólo A y M dan crédito fiscal. */
+          da_credito_fiscal: boolean;
+          estado: EstadoCompra;
+          observaciones: string | null;
+          creado_por: string | null;
+          creado_en: Timestamp;
+        };
+        /**
+         * El alta real va por `registrar_compra`, que además ingresa la
+         * mercadería, actualiza el costo y toca la cuenta corriente.
+         * Escribir por `.insert()` dejaría esos efectos sin hacer.
+         */
+        Insert: Omit<
+          Database['public']['Tables']['compras']['Row'],
+          'id' | 'creado_en' | 'da_credito_fiscal' | 'fecha_registracion'
+        >;
+        Update: Partial<Database['public']['Tables']['compras']['Insert']>;
+        Relationships: [];
+      };
+
+      compra_items: {
+        Row: {
+          id: string;
+          empresa_id: string;
+          compra_id: string;
+          orden: number;
+          producto_id: string | null;
+          descripcion: string;
+          cantidad: number;
+          precio_unitario: number;
+          alicuota_iva: number;
+          subtotal_neto: number;
+          subtotal_iva: number;
+          subtotal: number;
+        };
+        Insert: Omit<Database['public']['Tables']['compra_items']['Row'], 'id'>;
+        Update: Partial<Database['public']['Tables']['compra_items']['Insert']>;
+        Relationships: [];
+      };
+
+      compra_percepciones: {
+        Row: {
+          id: string;
+          empresa_id: string;
+          compra_id: string;
+          tipo: TipoPercepcion;
+          jurisdiccion: string | null;
+          base_imponible: number;
+          alicuota: number;
+          importe: number;
+        };
+        Insert: Omit<Database['public']['Tables']['compra_percepciones']['Row'], 'id'>;
+        Update: Partial<Database['public']['Tables']['compra_percepciones']['Insert']>;
+        Relationships: [];
+      };
     };
     Views: {
+      /**
+       * Una fila por (producto que maneja stock × depósito activo),
+       * incluidos los que están en cero.
+       */
       stock_saldos: {
         Row: {
           empresa_id: string;
           producto_id: string;
           deposito_id: string;
           saldo: number;
-          ultimo_movimiento: Timestamp;
+          ultimo_movimiento: Timestamp | null;
+          codigo: string;
+          nombre: string;
+          unidad_medida: string;
+          stock_minimo: number;
+          precio_costo: number;
+          activo: boolean;
+          deposito_nombre: string;
+          valorizado: number;
+          bajo_minimo: boolean;
         };
         Relationships: [];
       };
@@ -579,6 +770,22 @@ export type Database = {
         Args: { p_comprobante_origen_id: string; p_motivo: string };
         Returns: string;
       };
+      crear_comprobante_borrador: {
+        Args: { p_datos: Record<string, unknown> };
+        Returns: string;
+      };
+      actualizar_comprobante_borrador: {
+        Args: { p_comprobante_id: string; p_datos: Record<string, unknown> };
+        Returns: string;
+      };
+      saldos_de_productos: {
+        Args: {
+          p_empresa_id: string;
+          p_producto_ids: string[];
+          p_deposito_id?: string | null;
+        };
+        Returns: { producto_id: string; deposito_id: string; saldo: number }[];
+      };
       proximo_numero_tentativo: {
         Args: {
           p_empresa_id: string;
@@ -604,6 +811,103 @@ export type Database = {
         Args: { p_producto_id: string; p_deposito_id?: string | null };
         Returns: number;
       };
+
+      // --- Fase 3: stock ------------------------------------------------
+
+      ajustar_stock: {
+        Args: {
+          p_empresa_id: string;
+          p_producto_id: string;
+          p_deposito_id: string;
+          p_cantidad: number;
+          p_motivo: string;
+          p_costo_unitario?: number | null;
+        };
+        Returns: string;
+      };
+      transferir_stock: {
+        Args: {
+          p_empresa_id: string;
+          p_producto_id: string;
+          p_origen_id: string;
+          p_destino_id: string;
+          p_cantidad: number;
+          p_motivo?: string | null;
+        };
+        /** [movimiento de salida, movimiento de entrada] */
+        Returns: [string, string];
+      };
+      kardex_producto: {
+        Args: {
+          p_empresa_id: string;
+          p_producto_id: string;
+          p_deposito_id?: string | null;
+          p_desde?: string | null;
+          p_hasta?: string | null;
+        };
+        Returns: RenglonKardexDb[];
+      };
+      productos_bajo_minimo: {
+        Args: { p_empresa_id: string };
+        Returns: {
+          producto_id: string;
+          codigo: string;
+          nombre: string;
+          stock_minimo: number;
+          saldo_total: number;
+          faltante: number;
+        }[];
+      };
+      stock_valorizado: {
+        Args: { p_empresa_id: string; p_deposito_id?: string | null };
+        Returns: {
+          producto_id: string;
+          codigo: string;
+          nombre: string;
+          saldo: number;
+          precio_costo: number;
+          valorizado: number;
+        }[];
+      };
+
+      // --- Fase 3: compras ----------------------------------------------
+
+      crear_orden_compra_borrador: {
+        Args: { p_datos: Record<string, unknown> };
+        Returns: string;
+      };
+      actualizar_orden_compra_borrador: {
+        Args: { p_orden_compra_id: string; p_datos: Record<string, unknown> };
+        Returns: string;
+      };
+      emitir_orden_compra: {
+        Args: { p_orden_compra_id: string };
+        Returns: string;
+      };
+      anular_orden_compra: {
+        Args: { p_orden_compra_id: string; p_motivo: string };
+        Returns: string;
+      };
+      registrar_compra: {
+        Args: { p_datos: Record<string, unknown> };
+        Returns: string;
+      };
+      anular_compra: {
+        Args: { p_compra_id: string; p_motivo: string };
+        Returns: string;
+      };
+      pendiente_orden_compra: {
+        Args: { p_orden_compra_id: string };
+        Returns: {
+          producto_id: string | null;
+          descripcion: string;
+          cantidad: number;
+          cantidad_recibida: number;
+          pendiente: number;
+          precio_unitario: number;
+          alicuota_iva: number;
+        }[];
+      };
     };
     Enums: {
       condicion_iva: CondicionIva;
@@ -617,6 +921,9 @@ export type Database = {
       condicion_venta: CondicionVenta;
       tipo_movimiento_stock: TipoMovimientoStock;
       entidad_tipo: EntidadTipo;
+      estado_orden_compra: EstadoOrdenCompra;
+      estado_compra: EstadoCompra;
+      tipo_percepcion: TipoPercepcion;
     };
     CompositeTypes: Record<string, never>;
   };

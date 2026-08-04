@@ -1,1 +1,0 @@
-import Decimal from "decimal.js"; import { determinarLetra } from "@/lib/domain/comprobantes/letra"; console.log(new Decimal("0.505").toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toString(), determinarLetra("RESPONSABLE_INSCRIPTO","CONSUMIDOR_FINAL"));

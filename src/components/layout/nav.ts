@@ -4,7 +4,9 @@ import {
   Building2,
   LayoutDashboard,
   Package,
+  PackagePlus,
   ReceiptText,
+  ScanBarcode,
   ShoppingCart,
   Tag,
   Tags,
@@ -45,8 +47,10 @@ export const NAV: NavSection[] = [
   {
     titulo: 'Operación',
     items: [
-      { href: '/ventas', label: 'Ventas', icon: ShoppingCart, disponible: false },
-      { href: '/stock', label: 'Stock', icon: Boxes, disponible: false },
+      { href: '/ventas', label: 'Ventas', icon: ShoppingCart, disponible: true },
+      { href: '/pos', label: 'Punto de venta', icon: ScanBarcode, disponible: true },
+      { href: '/stock', label: 'Stock', icon: Boxes, disponible: true },
+      { href: '/compras', label: 'Compras', icon: PackagePlus, disponible: true },
       { href: '/tesoreria', label: 'Tesorería', icon: Wallet, disponible: false },
       { href: '/reportes', label: 'Reportes', icon: BarChart3, disponible: false },
     ],

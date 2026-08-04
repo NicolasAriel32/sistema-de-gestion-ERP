@@ -51,12 +51,15 @@ export const ETIQUETA_ESTADO: Record<EstadoComprobante, string> = {
 };
 
 /** Variante visual del badge de estado. */
-export const VARIANTE_ESTADO: Record<EstadoComprobante, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  BORRADOR: 'outline',
-  EMITIDO: 'default',
+export const VARIANTE_ESTADO: Record<
+  EstadoComprobante,
+  'default' | 'secondary' | 'outline' | 'destructive' | 'muted' | 'success' | 'warning'
+> = {
+  BORRADOR: 'muted',
+  EMITIDO: 'success',
   ANULADO: 'destructive',
   PAGADO: 'secondary',
-  PARCIAL: 'secondary',
+  PARCIAL: 'warning',
 };
 
 export const ETIQUETA_CONDICION_VENTA: Record<CondicionVenta, string> = {

@@ -19,7 +19,10 @@ export type RecursoCatalogo =
   | 'depositos'
   | 'puntos_venta'
   | 'medios_pago'
-  | 'comprobantes';
+  | 'comprobantes'
+  | 'stock_movimientos'
+  | 'ordenes_compra'
+  | 'compras';
 
 const ESCRITURA: Record<RecursoCatalogo, readonly Rol[]> = {
   clientes: ['ADMIN', 'VENDEDOR'],
@@ -32,6 +35,14 @@ const ESCRITURA: Record<RecursoCatalogo, readonly Rol[]> = {
   puntos_venta: ['ADMIN'],
   medios_pago: ['ADMIN'],
   comprobantes: ['ADMIN', 'VENDEDOR'],
+  // Ajustes y transferencias: espejo de ajustar_stock / transferir_stock.
+  // El VENDEDOR puede INSERTAR movimientos (los genera al facturar) pero
+  // no puede ajustar ni transferir a mano; por eso no figura acá.
+  stock_movimientos: ['ADMIN', 'DEPOSITO'],
+  ordenes_compra: ['ADMIN', 'CONTABLE', 'DEPOSITO'],
+  // Registrar una factura de proveedor mueve cuenta corriente: es del
+  // circuito contable, no del de depósito.
+  compras: ['ADMIN', 'CONTABLE'],
 };
 
 /** Saltear el bloqueo por límite de crédito. Espejo de aplicar_cta_cte_comprobante. */

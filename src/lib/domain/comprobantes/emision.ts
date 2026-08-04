@@ -3,6 +3,13 @@ import 'server-only';
 import { mensajeDeErrorNegocio } from '@/lib/errors';
 import { getFacturacionProvider } from '@/lib/domain/facturacion';
 import { createClient } from '@/lib/supabase/server';
+import type {
+  CondicionIva,
+  EstadoComprobante,
+  LetraComprobante,
+  TipoComprobante,
+  TipoDocumento,
+} from '@/lib/supabase/database.types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { esFactura, esNoFiscal, esNotaCredito, esNotaDebito } from './letra';
@@ -49,13 +56,13 @@ export type EmisionFallida = {
 export type ResultadoEmisionApp = EmisionOk | EmisionFallida;
 
 type Cliente = {
-  tipo_doc: string;
+  tipo_doc: TipoDocumento;
   cuit_dni: string | null;
-  condicion_iva: string;
+  condicion_iva: CondicionIva;
 };
 
 type Origen = {
-  tipo_comprobante: string;
+  tipo_comprobante: TipoComprobante;
   numero: number | null;
   puntos_venta: { numero: number } | null;
 };
@@ -63,9 +70,9 @@ type Origen = {
 type ComprobanteCompleto = {
   id: string;
   empresa_id: string;
-  tipo_comprobante: string;
-  letra: string;
-  estado: string;
+  tipo_comprobante: TipoComprobante;
+  letra: LetraComprobante;
+  estado: EstadoComprobante;
   fecha_emision: string;
   fecha_vencimiento: string | null;
   moneda: string;
@@ -142,7 +149,7 @@ export async function emitirComprobante(
   // ---------------------------------------------------------------
   // Comprobantes internos: no pasan por AFIP.
   // ---------------------------------------------------------------
-  if (esNoFiscal(c.tipo_comprobante as never)) {
+  if (esNoFiscal(c.tipo_comprobante)) {
     const { data: res, error: errNoFiscal } = await supabase.rpc('emitir_comprobante_no_fiscal', {
       p_comprobante_id: comprobanteId,
     });
@@ -165,7 +172,7 @@ export async function emitirComprobante(
   // Comprobantes fiscales
   // ---------------------------------------------------------------
   const provider = getFacturacionProvider();
-  const tipo = c.tipo_comprobante as never;
+  const tipo = c.tipo_comprobante;
 
   // El organismo manda sobre la numeración: se adelanta el contador local
   // si quedó atrás. Si la consulta falla, se sigue con el contador local;
@@ -179,7 +186,7 @@ export async function emitirComprobante(
       await supabase.rpc('sincronizar_contador_comprobante', {
         p_empresa_id: c.empresa_id,
         p_punto_venta_id: c.punto_venta_id,
-        p_tipo: c.tipo_comprobante,
+        p_tipo: tipo,
         p_ultimo_numero: ultimoRemoto,
       });
     }
@@ -188,7 +195,7 @@ export async function emitirComprobante(
   }
 
   // Comprobante asociado, obligatorio en notas de crédito y débito.
-  let asociado: { tipoComprobante: string; puntoVenta: number; numero: number } | null = null;
+  let asociado: { tipoComprobante: TipoComprobante; puntoVenta: number; numero: number } | null = null;
   if ((esNotaCredito(tipo) || esNotaDebito(tipo)) && c.comprobante_origen_id) {
     const { data: origen } = await supabase
       .from('comprobantes')
@@ -229,11 +236,11 @@ export async function emitirComprobante(
       cuitEmisor: c.empresas?.cuit ?? '',
       puntoVenta: c.puntos_venta?.numero ?? 0,
       tipoComprobante: tipo,
-      letra: c.letra as never,
+      letra: c.letra,
       numero,
-      tipoDocReceptor: (c.clientes?.tipo_doc ?? 'SIN_IDENTIFICAR') as never,
+      tipoDocReceptor: c.clientes?.tipo_doc ?? 'SIN_IDENTIFICAR',
       documentoReceptor: c.clientes?.cuit_dni ?? null,
-      condicionIvaReceptor: (c.clientes?.condicion_iva ?? 'CONSUMIDOR_FINAL') as never,
+      condicionIvaReceptor: c.clientes?.condicion_iva ?? 'CONSUMIDOR_FINAL',
       fechaEmision: c.fecha_emision,
       fechaVencimientoPago: c.fecha_vencimiento,
       moneda: c.moneda,
@@ -246,7 +253,7 @@ export async function emitirComprobante(
       iva27: Number(c.iva_27),
       otrosImpuestos: Number(c.otros_impuestos),
       total: Number(c.total),
-      comprobanteAsociado: asociado as never,
+      comprobanteAsociado: asociado,
     });
 
     if (!autorizacion.ok) {
@@ -305,6 +312,6 @@ export async function emitirComprobante(
 }
 
 /** ¿El comprobante admite que se le emita una nota de crédito? */
-export function admiteNotaCredito(tipo: string, estado: string): boolean {
-  return esFactura(tipo as never) && ['EMITIDO', 'PARCIAL', 'PAGADO'].includes(estado);
+export function admiteNotaCredito(tipo: TipoComprobante, estado: EstadoComprobante): boolean {
+  return esFactura(tipo) && ['EMITIDO', 'PARCIAL', 'PAGADO'].includes(estado);
 }

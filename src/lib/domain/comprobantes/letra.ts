@@ -82,6 +82,23 @@ export function letraDeTipo(tipo: TipoComprobante): LetraComprobante {
   }
 }
 
+/**
+ * Código de comprobante de AFIP (tabla de tipos de comprobante del
+ * WSFEv1). Va impreso en el PDF y es lo que espera `FECAESolicitar`
+ * cuando se conecte el proveedor real.
+ */
+export const CODIGO_AFIP: Partial<Record<TipoComprobante, string>> = {
+  FACTURA_A: '01',
+  ND_A: '02',
+  NC_A: '03',
+  FACTURA_B: '06',
+  ND_B: '07',
+  NC_B: '08',
+  FACTURA_C: '11',
+  ND_C: '12',
+  NC_C: '13',
+};
+
 export function esNoFiscal(tipo: TipoComprobante): tipo is TipoNoFiscal {
   return tipo === 'PRESUPUESTO' || tipo === 'PEDIDO' || tipo === 'REMITO';
 }
